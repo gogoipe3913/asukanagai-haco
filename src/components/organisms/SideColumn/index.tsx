@@ -24,13 +24,11 @@ const SideColumn: React.FC<SideColumnProps> = ({
       )}
     >
       <a href="/" className={style.SideColumn__logoLink}>
-        <LogoMain />
+        <h1>haco</h1>
         <p className={style.SideColumn__logoLinkText}>
-          Graphic + Web
+          Architecture photographer
           <br />
-          Designer / Developer
-          <br />
-          Taiki Kishiyama
+          Asuka Nagai
         </p>
       </a>
       <div className={style.SideColumn__anchorsWrapper}>
