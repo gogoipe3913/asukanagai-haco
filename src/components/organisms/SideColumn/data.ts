@@ -1,5 +1,5 @@
 const EXTERNAL_URLS = {
-  INSTAGRAM: "https://www.instagram.com/tai_kis_913/",
+  INSTAGRAM: "https://www.instagram.com/n.asuka85/",
 } as const;
 
 const ANCHOR_ITEMS = [

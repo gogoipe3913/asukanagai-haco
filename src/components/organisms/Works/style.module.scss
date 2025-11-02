@@ -45,6 +45,16 @@ $timing-function-image: cubic-bezier(0.83, 0, 0.17, 1);
     max-width: 360px;
     break-inside: avoid; /* カードがカラム間で分割されないようにする */
 
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: 0.7s;
+    transition-timing-function: $timing-function-image;
+    will-change: opacity;
+
+    &.isVisible {
+      opacity: 1;
+    }
+
     @include respondToSm {
       max-width: 303px;
     }

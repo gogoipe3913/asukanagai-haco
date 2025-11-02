@@ -2,7 +2,6 @@ import React from "react";
 import classNames from "classnames";
 import { Link } from "react-scroll";
 import style from "./style.module.scss";
-import LogoMain from "../../atoms/LogoMain";
 import { ANCHOR_ITEMS, EXTERNAL_URLS } from "./data";
 
 type SideColumnProps = {
