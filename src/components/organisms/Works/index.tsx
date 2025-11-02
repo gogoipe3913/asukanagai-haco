@@ -12,9 +12,14 @@ type WorksItemImagesInterface = {
 export type WorksItemDataInterface = {
   title: string;
   workCategory: string;
-  category: string;
+  category: string[] | string;
   createDate: string;
   images: WorksItemImagesInterface[];
+};
+
+type WorksProps = {
+  onFirstViewProgress?: (percent: number) => void;
+  onFirstViewLoaded?: () => void;
 };
 
 type WorkItemsProps = WorksItemDataInterface & {
@@ -23,7 +28,7 @@ type WorkItemsProps = WorksItemDataInterface & {
   index: number;
 };
 
-const REVEAL_INTERVAL_MS = 140; // 1つずつ出す間隔（好みで調整）
+const REVEAL_INTERVAL_MS = 140; // フェードイン間隔
 
 const WorkItem: React.FC<WorkItemsProps> = ({
   title,
@@ -34,8 +39,13 @@ const WorkItem: React.FC<WorkItemsProps> = ({
   isVisible,
   index,
 }) => {
+  const categories: string[] = Array.isArray(category)
+    ? category
+    : typeof category === "string" && category.length > 0
+    ? [category]
+    : [];
+
   return (
-    // li 自体を観測するのでここで ref を渡す
     <li
       ref={(el) => setItemRef(el, index)}
       className={classNames(style.Works__item, {
@@ -43,23 +53,21 @@ const WorkItem: React.FC<WorkItemsProps> = ({
       })}
     >
       <button className={style.Works__itemImageWrapper}>
-        {images.map((image, i) =>
-          i < 2 ? (
-            <img
-              key={i}
-              src={image.url}
-              alt={`${title}のサムネイル画像`}
-              className={style.Works__itemImage}
-              style={{
-                aspectRatio: `${image.width} / ${image.height}`,
-              }}
-            />
-          ) : null
-        )}
+        {images.slice(0, 2).map((image, i) => (
+          <img
+            key={i}
+            src={image.url}
+            alt={`${title}のサムネイル画像`}
+            className={style.Works__itemImage}
+            style={{ aspectRatio: `${image.width} / ${image.height}` }}
+          />
+        ))}
       </button>
       <div className={style.Works__itemInfo}>
         <p className={style.Works__itemInfoTexts}>
-          <span className={style.Works__itemInfoCategory}>{category}</span>
+          <span className={style.Works__itemInfoCategory}>
+            {categories.join(", ")}
+          </span>
         </p>
         <h3 className={style.Works__itemInfoTitle}>{title}</h3>
         <span className={style.Works__itemInfoId}>{workCategory}</span>
@@ -68,17 +76,15 @@ const WorkItem: React.FC<WorkItemsProps> = ({
   );
 };
 
-const Works: React.FC = () => {
+const Works: React.FC<WorksProps> = ({
+  onFirstViewProgress,
+  onFirstViewLoaded,
+}) => {
   const [worksData, setWorksData] = useState<WorksItemDataInterface[]>([]);
-  // 各アイテムの表示状態
   const [visibleMap, setVisibleMap] = useState<Record<number, boolean>>({});
-  // DOM 参照を保持
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
-  // すでに「表示予定（または表示済み）」として確定したかどうか
   const lockedSetRef = useRef<Set<number>>(new Set());
-  // 「可視になったら並ぶ」キュー
   const queueRef = useRef<number[]>([]);
-  // キューを処理中かどうか
   const tickingRef = useRef(false);
 
   const serviceDomain = import.meta.env.VITE_SERVICE_DOMAIN;
@@ -92,29 +98,27 @@ const Works: React.FC = () => {
     [serviceDomain, apiKey]
   );
 
-  // データ取得
+  // Worksデータ取得
   useEffect(() => {
     client
       .get({
         endpoint: "works",
-        queries: { limit: 50, orders: "-createDate" }, // 新しい順など好みで
+        queries: { limit: 50, orders: "-createDate" },
       })
       .then((res) => {
         const data = res.contents as WorksItemDataInterface[];
         setWorksData(data);
-        // 初期化
         setVisibleMap({});
         itemRefs.current = [];
         lockedSetRef.current.clear();
         queueRef.current = [];
       })
-      .catch((err) => console.log(err));
+      .catch((err) => console.error(err));
   }, [client]);
 
-  // IntersectionObserver を一度だけ作る
+  // IntersectionObserverによる順次フェードイン
   useEffect(() => {
     if (!("IntersectionObserver" in window)) {
-      // フォールバック：全部表示
       setVisibleMap((prev) => {
         const next: Record<number, boolean> = { ...prev };
         worksData.forEach((_, i) => (next[i] = true));
@@ -131,35 +135,23 @@ const Works: React.FC = () => {
           if (!idxAttr) return;
           const index = Number(idxAttr);
 
-          // すでに確定しているなら無視
           if (lockedSetRef.current.has(index)) return;
 
           if (entry.isIntersecting) {
-            // 可視になったらキューに積む（重複ガード）
-            lockedSetRef.current.add(index); // 一度だけ入れる
+            lockedSetRef.current.add(index);
             queueRef.current.push(index);
-            processQueue(); // 処理開始／継続
+            processQueue();
           }
         });
       },
-      {
-        root: null,
-        rootMargin: "0px 0px -10% 0px", // ちょい手前で検知
-        threshold: 0.1,
-      }
+      { rootMargin: "0px 0px -10% 0px", threshold: 0.1 }
     );
 
-    // 既に持っている参照を監視
     itemRefs.current.forEach((el) => el && io.observe(el));
 
-    return () => {
-      io.disconnect();
-    };
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => io.disconnect();
   }, [worksData.length]);
 
-  // キューを一定間隔で 1 件ずつ表示
   const processQueue = () => {
     if (tickingRef.current) return;
     tickingRef.current = true;
@@ -177,7 +169,6 @@ const Works: React.FC = () => {
     tick();
   };
 
-  // 子から渡す ref セッター
   const setItemRef = (el: HTMLLIElement | null, index: number) => {
     if (el) {
       el.setAttribute("data-work-index", String(index));
@@ -185,27 +176,94 @@ const Works: React.FC = () => {
     }
   };
 
+  // ファーストビュー画像のロード進捗
+  useEffect(() => {
+    if (!worksData.length) return;
+
+    const raf = requestAnimationFrame(() => {
+      const container = document.getElementById("works");
+      if (!container) return;
+
+      const imgs = Array.from(
+        container.querySelectorAll<HTMLImageElement>(
+          "img." + style.Works__itemImage
+        )
+      );
+
+      // ビューポート内の画像のみ対象
+      const inView = imgs.filter((img) => {
+        const rect = img.getBoundingClientRect();
+        return rect.bottom > 0 && rect.top < window.innerHeight;
+      });
+
+      if (inView.length === 0) {
+        onFirstViewProgress?.(100);
+        onFirstViewLoaded?.();
+        return;
+      }
+
+      let loaded = 0;
+      const total = inView.length;
+
+      const update = () => {
+        const percent = Math.min(100, Math.round((loaded / total) * 100));
+        onFirstViewProgress?.(percent);
+        if (loaded >= total) {
+          onFirstViewLoaded?.();
+          cleanup();
+        }
+      };
+
+      const handlers: Array<{
+        el: HTMLImageElement;
+        onLoad: () => void;
+        onError: () => void;
+      }> = [];
+
+      const cleanup = () => {
+        handlers.forEach(({ el, onLoad, onError }) => {
+          el.removeEventListener("load", onLoad);
+          el.removeEventListener("error", onError);
+        });
+      };
+
+      inView.forEach((el) => {
+        const onLoad = () => {
+          loaded += 1;
+          update();
+        };
+        const onError = () => {
+          loaded += 1;
+          update();
+        };
+
+        handlers.push({ el, onLoad, onError });
+
+        if (el.complete && el.naturalWidth > 0) {
+          loaded += 1;
+        } else {
+          el.addEventListener("load", onLoad, { once: true });
+          el.addEventListener("error", onError, { once: true });
+        }
+      });
+
+      update();
+      return cleanup;
+    });
+
+    return () => cancelAnimationFrame(raf);
+  }, [worksData, onFirstViewProgress, onFirstViewLoaded]);
+
   return (
     <div id="works" className={classNames(style.Works)}>
       <h2 className={style.Works__title}>
         <span className={style.Works__titleBody}>Works</span>
       </h2>
-
       <ul className={style.Works__items}>
-        {worksData.map((item, index) => {
-          const frag =
-            index % 3 === 0 ? (
-              <React.Fragment key={`frag-${index}`}>
-                <div id={`forResizingByLenis${index / 3}`} />
-                <WorkItem
-                  key={index}
-                  index={index}
-                  {...item}
-                  setItemRef={setItemRef}
-                  isVisible={!!visibleMap[index]}
-                />
-              </React.Fragment>
-            ) : (
+        {worksData.map((item, index) =>
+          index % 3 === 0 ? (
+            <React.Fragment key={`frag-${index}`}>
+              <div id={`forResizingByLenis${index / 3}`} />
               <WorkItem
                 key={index}
                 index={index}
@@ -213,10 +271,17 @@ const Works: React.FC = () => {
                 setItemRef={setItemRef}
                 isVisible={!!visibleMap[index]}
               />
-            );
-
-          return frag;
-        })}
+            </React.Fragment>
+          ) : (
+            <WorkItem
+              key={index}
+              index={index}
+              {...item}
+              setItemRef={setItemRef}
+              isVisible={!!visibleMap[index]}
+            />
+          )
+        )}
       </ul>
     </div>
   );

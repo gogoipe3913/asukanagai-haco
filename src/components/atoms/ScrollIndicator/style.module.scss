@@ -4,13 +4,13 @@
 .ScrollIndicator {
   width: 174px;
   font-size: 14px;
-  color: $font-color-gold;
+  color: $font-color-red;
   letter-spacing: 0.03em;
   transform: rotate(90deg);
 
   // デスクトップ以下
   @include respondToLg {
-    color: $font-color-gold;
+    color: $font-color-red;
   }
 
   &::after {
@@ -21,7 +21,7 @@
     margin-left: 8px;
     width: 0px;
     height: 0.5px;
-    background-color: $font-color-gold;
+    background-color: $font-color-red;
 
     // 単純繰り返しがあるのでkeyframeアニメーションを使う
     animation-name: scrollIndicatorAnimation;
@@ -31,7 +31,7 @@
 
     // デスクトップ以下
     @include respondToLg {
-      background-color: $font-color-gold;
+      background-color: $font-color-red;
     }
   }
 }
