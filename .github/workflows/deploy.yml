@@ -34,5 +34,5 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: dist/
-          server-dir: public_html/asukanagai-haco.com/ # ← ココを変更
+          server-dir: /asukanagai-haco.com/ # ← ココを変更
           dangerous-clean-slate: true
