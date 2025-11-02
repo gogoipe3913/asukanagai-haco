@@ -25,9 +25,9 @@ const SideColumn: React.FC<SideColumnProps> = ({
       <a href="/" className={style.SideColumn__logoLink}>
         <h1>haco</h1>
         <p className={style.SideColumn__logoLinkText}>
-          Architecture photographer
+          Architecture photograph
           <br />
-          Asuka Nagai
+          by Asuka Nagai
         </p>
       </a>
       <div className={style.SideColumn__anchorsWrapper}>
